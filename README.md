@@ -29,3 +29,10 @@ El objetivo es diseñar e implementar una versión modificada del juego de mesa 
 8. Glosario de términos 
 9. Bibliografía 
 10. Anexos 
+
+## 1. Objetivo del Estudiante
+
+| Objetivo  | Logrado |
+| ------------- | ------------- |
+| Demuestra ética profesional en el ejercicio de la ingeniería de software.  | Todos los miembros actuaron con integridad y respeto hacia sus compañeros y las normas éticas de la ingeniería de software. Se manejó la información de manera confidencial y de forma honesta. Asimismo, se consideró los valores éticos en la toma de decisiones.  |
+| Content Cell  | Content Cell  |

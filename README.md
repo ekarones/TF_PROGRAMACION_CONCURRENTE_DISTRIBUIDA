@@ -613,8 +613,8 @@ Finalmente el juego termina cuando un jugador tiene sus 4 fichas en la última c
 
 ## 9. Bibliografía
 
-Código Facilito. ¿Qué es la programación concurrente? Recuperado de https://codigofacilito.com/articulos/programacion-concurrente [Consulta:23 de noviembre del 2023]
-Platzi. ¿Cómo funciona la metodología Scrum? Qué es y sus 5 fases. Recuperado de https://platzi.com/blog/metodologia-scrum-fases/ [Consulta: 23 de noviembre del 2023]
+* Código Facilito. ¿Qué es la programación concurrente? Recuperado de https://codigofacilito.com/articulos/programacion-concurrente [Consulta:23 de noviembre del 2023]
+* Platzi. ¿Cómo funciona la metodología Scrum? Qué es y sus 5 fases. Recuperado de https://platzi.com/blog/metodologia-scrum-fases/ [Consulta: 23 de noviembre del 2023]
 
 ## 10. Anexos
 

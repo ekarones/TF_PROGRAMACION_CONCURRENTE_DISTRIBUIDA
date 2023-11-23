@@ -53,7 +53,7 @@ La simulación debe mostrar el progreso del juego en tiempo real, lo que signifi
 
 ![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/5fced8f4-7a88-4d3d-a36c-b84f7d16748a)
 
-#### a. Archivo main.go
+### a. Archivo main.go
 
 initializeGameMap(): En esta función se agregarán los obstáculos en el mapa del juego. Estos obstáculos serán puestos de manera aleatoria y estarán representado por -1.
 
@@ -146,5 +146,411 @@ func startGame(w http.ResponseWriter, r *http.Request) {
 }
 
 ```
+showGame(): Esta función mostrará lo que sucedió en cada turno de cada jugador, mostrar que ficha movió y si llegó o no a la meta. Esto será posible, por los archivos de texto que se generarán en el archivo player.go.
+
+```go
+func showGame(w http.ResponseWriter, r *http.Request) {
+    // Leer el contenido del archivo de texto ROJO
+    contentRojo, err := ioutil.ReadFile("archivo_ROJO.txt")
+    if err != nil {
+        fmt.Println("Error al leer el archivo ROJO:", err)
+        http.Error(w, "Error al leer el archivo ROJO", http.StatusInternalServerError)
+        return
+    }
+
+
+    // Convertir el contenido a string para ROJO
+    fileContentRojo := string(contentRojo)
+
+
+    // Leer el contenido del archivo de texto AZUL
+    contentAzul, err := ioutil.ReadFile("archivo_AZUL.txt")
+    if err != nil {
+        fmt.Println("Error al leer el archivo AZUL:", err)
+        http.Error(w, "Error al leer el archivo AZUL", http.StatusInternalServerError)
+        return
+    }
+
+
+    // Convertir el contenido a string para AZUL
+    fileContentAzul := string(contentAzul)
+
+
+    // Leer el contenido del archivo de texto VERDE
+    contentVerde, err := ioutil.ReadFile("archivo_VERDE.txt")
+    if err != nil {
+        fmt.Println("Error al leer el archivo VERDE:", err)
+        http.Error(w, "Error al leer el archivo VERDE", http.StatusInternalServerError)
+        return
+    }
+
+
+    // Convertir el contenido a string para VERDE
+    fileContentVerde := string(contentVerde)
+
+
+    contentAmarillo, err := ioutil.ReadFile("archivo_AMARILLO.txt")
+    if err != nil {
+        fmt.Println("Error al leer el archivo AMARILLO:", err)
+        http.Error(w, "Error al leer el archivo", http.StatusInternalServerError)
+        return
+    }
+    fileContentAmarillo := string(contentAmarillo)
+
+
+    // Crear una estructura de datos para pasar al template
+    data := struct {
+        FileContentRojo     template.HTML
+        FileContentAzul     template.HTML
+        FileContentVerde    template.HTML
+        FileContentAmarillo template.HTML
+    }{
+        FileContentRojo:     template.HTML(fileContentRojo),
+        FileContentAzul:     template.HTML(fileContentAzul),
+        FileContentVerde:    template.HTML(fileContentVerde),
+        FileContentAmarillo: template.HTML(fileContentAmarillo),
+    }
+
+
+    // Parsear el template y pasar los datos
+    tmpl, err := template.ParseFiles("templates/show_game.html")
+    if err != nil {
+        fmt.Println("Error al parsear el template:", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+
+    // Ejecutar el template y manejar posibles errores
+    err = tmpl.Execute(w, data)
+    if err != nil {
+        fmt.Println("Error al ejecutar el template:", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+}
+
+```
+
+main(): Esta función configura el manejo de archivos estáticos y define rutas para manejar las solicitudes. Finalmente, Inicia el servidor HTTP en el puerto 8080.
+
+```go
+func main() {
+    // Configurar el manejo de archivos estáticos
+    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+
+    // Configurar las rutas de manejo
+    http.HandleFunc("/", home)
+    http.HandleFunc("/start_game", startGame)
+    http.HandleFunc("/show_game", showGame)
+
+
+    fmt.Println("Server listening on :8080")
+    http.ListenAndServe(":8080", nil)
+}
+
+```
+
+### b. Archivo player.go
+
+Se definen dos estructuras: "Ficha" y "Lanzamiento". La estructura "Ficha" representa las fichas de los jugadores, y "Lanzamiento" representa los resultados de lanzar dos dados. Uno de los datos más importantes es “estado” de la estructura “Ficha” que podemos saber si una ficha se va entrar en una casilla donde hay obstáculo (1) o si ya estuvo en zona obstáculo (2). Además, crean la variable para el nodo remoto, un arreglo del objeto fichas y una lista para guardar el mapa.
+
+```go
+type Ficha struct {
+    id       int
+    color    string
+    posicion int
+    estado   int
+    meta     bool
+}
+
+type Lanzamiento struct {
+    dadoA   int
+    dadoB   int
+    avanzar bool
+}
+
+var direccionRemota string
+var fichas []Ficha
+var mapa [40]int
+
+```
+
+guardarPosicionesEnArchivo(): Se utiliza para guardar las posiciones de las fichas en un archivo de texto. La función recibe el color del jugador como parámetro.
+
+```go
+func guardarPosicionesEnArchivo(color string) {
+    ArchivoRegistro := fmt.Sprintf("archivo_%s.txt", color)
+    file, err := os.OpenFile(ArchivoRegistro, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        fmt.Println("Error al abrir el archivo:", err)
+        return
+    }
+    defer file.Close()
+    for _, f := range fichas {
+        message := fmt.Sprintf("<p>Id: %d - Color: %s - Posición: %d - Meta:%t </p>\n", f.id, f.color, f.posicion, f.meta)
+        _, err := file.WriteString(message)
+        if err != nil {
+            fmt.Println("Error al escribir en el archivo:", err)
+            return
+        }
+    }
+    _, err = file.WriteString("--------------------------------------------------\n")
+    if err != nil {
+        fmt.Println("Error al escribir en el archivo:", err)
+        return
+    }
+}
+
+```
+
+enviar():  Transformación del objeto GameData ha formato json y luego a tipo string, con el objetivo de enviar el objeto hacia el nodo siguiente.
+
+```go
+func enviar(gameData GameData) {
+    con, _ := net.Dial("tcp", direccionRemota)
+    jsonBytes, _ := json.Marshal(gameData)
+    jsonStr := string(jsonBytes)
+    defer con.Close()
+    fmt.Fprintln(con, jsonStr)
+}
+
+```
+
+lanzarDados(): Genera un lanzamiento de dados aleatorio y devuelve un objeto de tipo "Lanzamiento".
+```go
+func lanzarDados() Lanzamiento {
+    valor := rand.Intn(2)
+    tiro := Lanzamiento{
+        dadoA:   rand.Intn(6) + 1,
+        dadoB:   rand.Intn(6) + 1,
+        avanzar: valor == 1,
+    }
+    return tiro
+}
+
+```
+
+manejador(): 
+
+pierdeTurno(): Verifica si un jugador pierde su turno debido a un obstáculo en el tablero.
+
+```go
+func pierdeTurno() bool {
+    for i := 0; i < 4; i++ {
+        for ind, valor := range mapa {
+            if valor == -1 && ind == fichas[i].posicion {
+                fichas[i].estado += 1
+                if fichas[i].estado > 2 {
+                    fichas[i].estado = 2
+                }
+            }
+            if fichas[i].estado == 2 && valor == 0 && ind == fichas[i].posicion {
+                fichas[i].estado = 0
+            }
+        }
+    }
+    for i := 0; i < 4; i++ {
+        if fichas[i].estado == 1 {
+            return true
+        }
+    }
+    return false
+}
+
+```
+
+turnoJugador(): Representa el turno de un jugador. Utiliza canales para coordinar los movimientos de las fichas y realiza cálculos para avanzar las fichas en función de los resultados de los dados. También verifica si alguna ficha ha llegado a la meta.
+```go
+func turno_jugador(ficha1 chan bool, ficha2 chan bool, ficha3 chan bool, ficha4 chan bool) int {
+    var tiro Lanzamiento = lanzarDados()
+    var ind int
+    if !pierdeTurno() {
+        go func() {
+            if fichas[0].meta == false {
+                ficha1 <- true
+            }
+        }()
+        go func() {
+            if fichas[1].meta == false {
+                ficha2 <- true
+            }
+        }()
+        go func() {
+            if fichas[2].meta == false {
+                ficha3 <- true
+            }
+        }()
+        go func() {
+            if fichas[3].meta == false {
+                ficha4 <- true
+            }
+        }()
+
+
+        select {
+        case <-ficha1:
+            fmt.Printf("(JUEGA FICHA 1)\n")
+            ind = 0
+
+
+        case <-ficha2:
+            fmt.Printf("(JUEGA FICHA 2)\n")
+            ind = 1
+
+
+        case <-ficha3:
+            fmt.Printf("(JUEGA FICHA 3)\n")
+            ind = 2
+
+
+        case <-ficha4:
+            fmt.Printf("(JUEGA FICHA 4)\n")
+            ind = 3
+        }
+
+
+        go func() {
+            for {
+                select {
+                case <-ficha1:
+                case <-ficha2:
+                case <-ficha3:
+                case <-ficha4:
+                    // Descartar elementos del canal
+                default:
+                    // El canal está vacío
+                    return
+                }
+            }
+        }()
+
+
+        if tiro.avanzar {
+            fmt.Println("RESULTADO LANZAMIENTO: ", tiro.dadoA+tiro.dadoB)
+            fichas[ind].posicion += tiro.dadoA + tiro.dadoB
+            if fichas[ind].posicion > 39 {
+                fichas[ind].posicion = 39 - (fichas[ind].posicion - 39)
+            }
+        } else {
+            fmt.Println("RESULTADO LANZAMIENTO: ", tiro.dadoA-tiro.dadoB)
+            fichas[ind].posicion += tiro.dadoA - tiro.dadoB
+            if fichas[ind].posicion < 0 {
+                fichas[ind].posicion = 0
+            }
+        }
+        fmt.Println("POSCION ACTUAL DE LA FICHA: ", fichas[ind].posicion)
+        // gano?
+        for i := 0; i < 4; i++ {
+            if fichas[i].posicion == 39 {
+                fichas[i].meta = true
+            }
+        }
+        fmt.Println("-------------------------")
+        return 1
+
+
+    } else {
+        fmt.Println("ESTE JUGADOR PERDIO SU TURNO")
+        fmt.Println("-------------------------")
+        return 0
+    }
+}
+
+```
+
+main(): Se ingresa los valores del color del jugador,  el puerto actual y el puerto destino .Se crea una lista de canales para las fichas del jugador y se ejecuta de manera concurrente la función manejador().
+
+```go
+func main() {
+
+
+    br := bufio.NewReader(os.Stdin)
+    fmt.Print("Ingresa el color del jugador: ")
+    color, _ := br.ReadString('\n')
+    color = strings.TrimSpace(color)
+
+
+    fmt.Print("Puerto Actual: ")
+    strPuertoLocal, _ := br.ReadString('\n')
+    strPuertoLocal = strings.TrimSpace(strPuertoLocal)
+    direccionLocal := fmt.Sprintf("localhost:%s", strPuertoLocal)
+
+
+    fmt.Print("Puerto Destino: ")
+    strPuertoRemoto, _ := br.ReadString('\n')
+    strPuertoRemoto = strings.TrimSpace(strPuertoRemoto)
+    direccionRemota = fmt.Sprintf("localhost:%s", strPuertoRemoto)
+
+
+    chFichas := make([]chan bool, NFICHAS)
+
+
+    for i := range chFichas {
+        chFichas[i] = make(chan bool)
+    }
+
+
+    ln, _ := net.Listen("tcp", direccionLocal)
+    defer ln.Close()
+    for {
+        con, _ := ln.Accept()
+        go manejador(con, color, chFichas)
+    }
+}
+
+```
+
+## 5. Capítulo IV: Verificación de la solución
+
+En la pantalla de inicio el usuario puede seleccionar la ficha que iniciará el juego y el número de obstáculos que estarán en el mapa. Después de dar al botón “Iniciar Juego”, se genera un estructura “GameData” que al enviarse a los otros nodos dará inicio a las rondas. 
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/89687c03-9790-45e8-ad77-57e4c013fb40)
+
+Después de dar inicio al juego, se generarán 4 cuadros que mostrarán las estadísticas del juego sobre los 4 jugadores.
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/f3f8d2bd-de4d-4efb-b416-67c570dc823a)
+
+En la primera ronda se inicializan las fichas de los jugadores y se comprueban que la información del GameData haya llegado a todos los nodos.
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/981e97dd-3017-4dee-ba36-4f81b37a41bf)
+
+En las siguientes rondas se muestran las posiciones de las fichas y se notifica si el ha perdido un turno.
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/f4d69d29-2002-4694-86fe-9d79312b8f2f)
+
+Finalmente el juego termina cuando un jugador tiene sus 4 fichas en la última casilla (pos 39), se detiene el juego y se imprime un mensaje de victoria.
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/bc89d676-560b-4f37-8d27-70a893fe70b3)
+
+## 6. Conclusiones
+
+* La comprensión y aplicación de la programación concurrente y distribuida son fundamentales en el desarrollo de sistemas modernos. La capacidad de ejecutar tareas simultáneamente y coordinar la comunicación entre nodos distribuidos es esencial para construir aplicaciones eficientes y escalables.
+* La utilización de canales como mecanismos de comunicación, junto con la gestión adecuada de puertos, ha demostrado ser crucial en entornos concurrentes y distribuidos. La implementación eficiente de estos elementos facilita una comunicación segura y coordinada entre los diferentes componentes de un sistema.
+* La adopción de marcos ágiles, como SCRUM, y herramientas de gestión de versiones, como GitHub, ha demostrado ser efectiva en la coordinación de equipos y el seguimiento del progreso del proyecto. La planificación iterativa y la colaboración a través de estas herramientas contribuyen a un desarrollo más eficiente y organizado.
+
+## 7. Recomendaciones
+
+* Fomentar una comunicación efectiva y una colaboración estrecha entre los miembros del equipo es esencial. El uso de herramientas colaborativas en línea y reuniones regulares puede mejorar la coordinación y la resolución eficiente de problemas.
+
+## 8. Glosario de términos
+
+* Concurrencia: Concepto en programación que se refiere a la ejecución simultánea de múltiples tareas en un programa. Se logra mediante el uso de goroutines y canales.
+* Host: Se refiere a una máquina o dispositivo físico que forma parte de una red. Participa en la ejecución de tareas o proporciona un servicio. a través de la red.
+* Framework: Conjunto estructurado de herramientas, bibliotecas y convenciones que proporciona una base para el desarrollo de software.
+
+## 9. Bibliografía
+
+Código Facilito. ¿Qué es la programación concurrente? Recuperado de https://codigofacilito.com/articulos/programacion-concurrente [Consulta:23 de noviembre del 2023]
+Platzi. ¿Cómo funciona la metodología Scrum? Qué es y sus 5 fases. Recuperado de https://platzi.com/blog/metodologia-scrum-fases/ [Consulta: 23 de noviembre del 2023]
+
+## 10. Anexos
+
+* Código
+https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA
+* Video
+
+
 
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../static/styles.css" />
+     
+    <title>LUDO</title>
+  </head>
+
+  <body>
+    <h1>BIENVENIDO</h1>
+    <h2>Antes de iniciar el juego:</h2>
+    <form action="/start_game" method="post">
+      <label> Selecciona la ficha que iniciara el juego: </label>
+      <div>
+        <label style="color: #e74c3c">
+          <input type="radio" name="opcion" value="rojo" checked/>
+          ROJO
+        </label>
+        <label style="color: #2980b9">
+          <input type="radio" name="opcion" value="azul" />
+          AZUL
+        </label>
+        <label style="color: #2ecc71">
+          <input type="radio" name="opcion" value="verde" />
+          VERDE
+        </label>
+        <label style="color: #f1c40f">
+          <input type="radio" name="opcion" value="amarillo" />
+          AMARILLO
+        </label>
+      </div>
+      <label for="maxObstaculos">
+        Ingrese el número de obstaculos:
+        <input type="number" name="maxObstaculos" min="1" max="10" value="1"/>
+      </label>
+      <button type="submit">Iniciar Juego</button>
+    </div>
+  </body>
+</html>

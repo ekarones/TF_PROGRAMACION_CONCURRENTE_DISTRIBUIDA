@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../static/styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/spinners/1.3.1/spinners.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/spinners/1.3.1/spinners-theme/standard.min.css" />
+  <title>LUDO JUGANDO</title>
+  <style>
+    #fileContent {
+      display: none;
+    }
+
+    .loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .my-loader {
+      color: white;
+      font-family: "Lilita One", sans-serif;
+      font-size: 30px;
+      padding: 15px;
+    }
+
+    .casilla {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    }
+
+    .registro {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    }
+
+    .mostrar {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>BIENVENIDO</h1>
+  <h2>Antes de iniciar el juego:</h2>
+  <form action="/start_game" method="post">
+    <label> Selecciona la ficha que iniciará el juego: </label>
+    <div>
+      <label style="color: #e74c3c">
+        <input type="radio" name="opcion" value="rojo" checked />
+        ROJO
+      </label>
+      <label style="color: #2980b9">
+        <input type="radio" name="opcion" value="azul" />
+        AZUL
+      </label>
+      <label style="color: #2ecc71">
+        <input type="radio" name="opcion" value="verde" />
+        VERDE
+      </label>
+      <label style="color: #f1c40f">
+        <input type="radio" name="opcion" value="amarillo" />
+        AMARILLO
+      </label>
+    </div>
+    <label for="maxObstaculos">
+      Ingrese el número de obstáculos:
+      <input type="number" name="maxObstaculos" min="1" max="10" value="1" />
+    </label>
+    <button type="submit">Iniciar Juego</button>
+    <div>
+    </div>
+  </form>
+  <div class="loader" id="loader">
+    <span class="sr-only my-loader">Loading...</span>
+  </div>
+  <div id="fileContent">
+    <div class="div-juego">
+      <div class="loader" id="loader2">
+        <!-- Segundo Loader -->
+        <div class="spinner" style="position: absolute; top: 50%; left: 50%"></div>
+      </div>
+      <div id="casillaRojo" class="casilla" style="color: #e74c3c">
+        <!-- Primer Contenedor -->
+        <h3>ROJO</h3>
+        {{.FileContentRojo}}
+      </div>
+      <div id="casillaAzul" class="casilla" style="color: #2980b9">
+        <!-- Segundo Contenedor -->
+        <h3>AZUL</h3>
+        {{.FileContentAzul}}
+        <!-- Agrega tus registros aquí -->
+      </div>
+      <div id="casillaVerde" class="casilla" style="color: #2ecc71">
+        <!-- Tercer Contenedor -->
+        <h3>VERDE</h3>
+        {{.FileContentVerde}}
+        <!-- Agrega tus registros aquí -->
+      </div>
+      <div id="casillaAmarillo" class="casilla" style="color: #f1c40f">
+        <!-- Cuarto Contenedor -->
+        <h3>AMARILLO</h3>
+        {{.FileContentAmarillo}}
+        <!-- Agrega tus registros aquí -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showContent() {
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("fileContent").style.display = "block";
+    }
+
+    function animateCasilla(casilla) {
+      return new Promise((resolve) => {
+        casilla.style.opacity = "1";
+        casilla.style.transform = "translateY(0)";
+        resolve();
+      });
+    }
+
+    function animateRegistros(registros) {
+      return new Promise((resolve) => {
+        registros.forEach(function (registro, index) {
+          setTimeout(function () {
+            registro.classList.add("mostrar");
+          }, 100 * index);
+        });
+        setTimeout(resolve, 100 * registros.length);
+      });
+    }
+
+    async function mostrarRegistrosYContenedores() {
+      var loader = document.getElementById("loader2");
+      var casillas = document.querySelectorAll(".casilla");
+
+      loader.style.display = "none";
+
+      // Utilizamos requestAnimationFrame para asegurar que todas las animaciones comiencen al mismo tiempo
+      requestAnimationFrame(async () => {
+        await Promise.all(
+          Array.from(casillas).map(async (casilla, index) => {
+            await animateCasilla(casilla);
+            const registros = casilla.querySelectorAll(".registro");
+            await animateRegistros(registros);
+          })
+        );
+      });
+    }
+
+    // Después de que el primer loader termine (4000 milisegundos), ocultar el loader y mostrar los registros y contenedores
+    setTimeout(function () {
+      showContent();
+      mostrarRegistrosYContenedores();
+    }, 4000);
+
+    window.onload = function () {
+      // No es necesario llamar a mostrarRegistrosYContenedores() aquí,
+      // ya que se está llamando después del tiempo de espera en el setTimeout
+    };
+  </script>
+</body>
+
+</html>

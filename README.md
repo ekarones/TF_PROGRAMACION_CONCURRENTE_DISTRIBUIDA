@@ -59,23 +59,22 @@ initializeGameMap(): En esta función se agregarán los obstáculos en el mapa d
 
 ```go
 func initializeGameMap(tabla *[40]int, invalidPositions []int, maxObstaculos int) {
-    var contador int
+	var contador int
 
-
-    for contador < maxObstaculos {
-        number := rand.Intn(40)
-        found := false
-        for _, v := range invalidPositions {
-            if number == v {
-                found = true
-                break
-            }
-        }
-        if !found {
-            contador++
-            (*tabla)[number] = -1
-        }
-    }
+	for contador < maxObstaculos {
+		number := rand.Intn(40)
+		found := false
+		for _, v := range invalidPositions {
+			if number == v {
+				found = true
+				break
+			}
+		}
+		if !found {
+			contador++
+			(*tabla)[number] = -1
+		}
+	}
 }
 ```
 
@@ -83,66 +82,68 @@ start_game(): Primero, se crea un objeto llamado GameData que almacenará la var
 
 ```go
 type GameData struct {
-    NumPlayers int
-    GameMap    [40]int
+	NumPlayers int
+	GameMap    [40]int
+	NumTurno   int
 }
 
 var puertoRemoto string
 
 func startGame(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    maxObstaculosStr := r.FormValue("maxObstaculos")
-    maxObstaculos, err := strconv.Atoi(maxObstaculosStr)
-    if err != nil {
-        http.Error(w, "Invalid number of obstacles", http.StatusBadRequest)
-        return
-    }
+	maxObstaculosStr := r.FormValue("maxObstaculos")
+	maxObstaculos, err := strconv.Atoi(maxObstaculosStr)
+	if err != nil {
+		http.Error(w, "Invalid number of obstacles", http.StatusBadRequest)
+		return
+	}
 
-    color := r.FormValue("opcion")
-    if color == "rojo" {
-        puertoRemoto = "8000"
-    } else if color == "azul" {
-        puertoRemoto = "8001"
-    } else if color == "verde" {
-        puertoRemoto = "8002"
-    } else {
-        puertoRemoto = "8003"
-    }
+	color := r.FormValue("opcion")
+	if color == "rojo" {
+		puertoRemoto = "8000"
+	} else if color == "azul" {
+		puertoRemoto = "8001"
+	} else if color == "verde" {
+		puertoRemoto = "8002"
+	} else {
+		puertoRemoto = "8003"
+	}
 
-    fmt.Println("nodo:" + puertoRemoto)
-    direccionRemota := fmt.Sprintf("localhost:%s", puertoRemoto)
+	fmt.Println("nodo:" + puertoRemoto)
+	direccionRemota := fmt.Sprintf("localhost:%s", puertoRemoto)
 
-    var gameMap [40]int
-    invalidPositions := []int{0, 39}
-    initializeGameMap(&gameMap, invalidPositions, maxObstaculos)
+	var gameMap [40]int
+	invalidPositions := []int{0, 39}
+	initializeGameMap(&gameMap, invalidPositions, maxObstaculos)
 
+	gameData := GameData{
+		NumPlayers: 4,
+		GameMap:    gameMap,
+		NumTurno:   0,
+	}
 
-    gameData := GameData{
-        NumPlayers: 4,
-        GameMap:    gameMap,
-    }
+	jsonBytes, err := json.Marshal(gameData)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    jsonBytes, err := json.Marshal(gameData)
-    if err != nil {
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	jsonStr := string(jsonBytes)
+	fmt.Println(jsonStr)
+	fmt.Println(direccionRemota)
 
-    jsonStr := string(jsonBytes)
-    fmt.Println(jsonStr)
-    fmt.Println(direccionRemota)
+	// Aquí puedes realizar cualquier lógica adicional antes de enviar los datos al cliente
 
+	con, _ := net.Dial("tcp", direccionRemota)
+	defer con.Close()
+	fmt.Fprintln(con, jsonStr)
 
-    con, _ := net.Dial("tcp", direccionRemota)
-    defer con.Close()
-    fmt.Fprintln(con, jsonStr)
-
-
-    http.Redirect(w, r, "/show_game", http.StatusSeeOther)
+	// Respuesta al cliente
+	http.Redirect(w, r, "/show_game", http.StatusSeeOther)
 }
 
 ```
@@ -150,104 +151,93 @@ showGame(): Esta función mostrará lo que sucedió en cada turno de cada jugado
 
 ```go
 func showGame(w http.ResponseWriter, r *http.Request) {
-    // Leer el contenido del archivo de texto ROJO
-    contentRojo, err := ioutil.ReadFile("archivo_ROJO.txt")
-    if err != nil {
-        fmt.Println("Error al leer el archivo ROJO:", err)
-        http.Error(w, "Error al leer el archivo ROJO", http.StatusInternalServerError)
-        return
-    }
+	// Leer el contenido del archivo de texto ROJO
 
+	contentRojo, err := ioutil.ReadFile("archivo_ROJO.txt")
+	if err != nil {
+		fmt.Println("Error al leer el archivo ROJO:", err)
+		http.Error(w, "Error al leer el archivo ROJO", http.StatusInternalServerError)
+		return
+	}
 
-    // Convertir el contenido a string para ROJO
-    fileContentRojo := string(contentRojo)
+	// Convertir el contenido a string para ROJO
+	fileContentRojo := string(contentRojo)
 
+	// Leer el contenido del archivo de texto AZUL
+	contentAzul, err := ioutil.ReadFile("archivo_AZUL.txt")
+	if err != nil {
+		fmt.Println("Error al leer el archivo AZUL:", err)
+		http.Error(w, "Error al leer el archivo AZUL", http.StatusInternalServerError)
+		return
+	}
 
-    // Leer el contenido del archivo de texto AZUL
-    contentAzul, err := ioutil.ReadFile("archivo_AZUL.txt")
-    if err != nil {
-        fmt.Println("Error al leer el archivo AZUL:", err)
-        http.Error(w, "Error al leer el archivo AZUL", http.StatusInternalServerError)
-        return
-    }
+	// Convertir el contenido a string para AZUL
+	fileContentAzul := string(contentAzul)
 
+	// Leer el contenido del archivo de texto VERDE
+	contentVerde, err := ioutil.ReadFile("archivo_VERDE.txt")
+	if err != nil {
+		fmt.Println("Error al leer el archivo VERDE:", err)
+		http.Error(w, "Error al leer el archivo VERDE", http.StatusInternalServerError)
+		return
+	}
 
-    // Convertir el contenido a string para AZUL
-    fileContentAzul := string(contentAzul)
+	// Convertir el contenido a string para VERDE
+	fileContentVerde := string(contentVerde)
 
+	contentAmarillo, err := ioutil.ReadFile("archivo_AMARILLO.txt")
+	if err != nil {
+		fmt.Println("Error al leer el archivo AMARILLO:", err)
+		http.Error(w, "Error al leer el archivo", http.StatusInternalServerError)
+		return
+	}
+	fileContentAmarillo := string(contentAmarillo)
 
-    // Leer el contenido del archivo de texto VERDE
-    contentVerde, err := ioutil.ReadFile("archivo_VERDE.txt")
-    if err != nil {
-        fmt.Println("Error al leer el archivo VERDE:", err)
-        http.Error(w, "Error al leer el archivo VERDE", http.StatusInternalServerError)
-        return
-    }
+	// Crear una estructura de datos para pasar al template
+	data := struct {
+		FileContentRojo     template.HTML
+		FileContentAzul     template.HTML
+		FileContentVerde    template.HTML
+		FileContentAmarillo template.HTML
+	}{
+		FileContentRojo:     template.HTML(fileContentRojo),
+		FileContentAzul:     template.HTML(fileContentAzul),
+		FileContentVerde:    template.HTML(fileContentVerde),
+		FileContentAmarillo: template.HTML(fileContentAmarillo),
+	}
 
+	// Parsear el template y pasar los datos
+	tmpl, err := template.ParseFiles("templates/show_game.html")
+	if err != nil {
+		fmt.Println("Error al parsear el template:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Convertir el contenido a string para VERDE
-    fileContentVerde := string(contentVerde)
-
-
-    contentAmarillo, err := ioutil.ReadFile("archivo_AMARILLO.txt")
-    if err != nil {
-        fmt.Println("Error al leer el archivo AMARILLO:", err)
-        http.Error(w, "Error al leer el archivo", http.StatusInternalServerError)
-        return
-    }
-    fileContentAmarillo := string(contentAmarillo)
-
-
-    // Crear una estructura de datos para pasar al template
-    data := struct {
-        FileContentRojo     template.HTML
-        FileContentAzul     template.HTML
-        FileContentVerde    template.HTML
-        FileContentAmarillo template.HTML
-    }{
-        FileContentRojo:     template.HTML(fileContentRojo),
-        FileContentAzul:     template.HTML(fileContentAzul),
-        FileContentVerde:    template.HTML(fileContentVerde),
-        FileContentAmarillo: template.HTML(fileContentAmarillo),
-    }
-
-
-    // Parsear el template y pasar los datos
-    tmpl, err := template.ParseFiles("templates/show_game.html")
-    if err != nil {
-        fmt.Println("Error al parsear el template:", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-
-
-    // Ejecutar el template y manejar posibles errores
-    err = tmpl.Execute(w, data)
-    if err != nil {
-        fmt.Println("Error al ejecutar el template:", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Ejecutar el template y manejar posibles errores
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		fmt.Println("Error al ejecutar el template:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
-
 ```
 
 main(): Esta función configura el manejo de archivos estáticos y define rutas para manejar las solicitudes. Finalmente, Inicia el servidor HTTP en el puerto 8080.
 
 ```go
 func main() {
-    // Configurar el manejo de archivos estáticos
-    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Configurar el manejo de archivos estáticos
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	// Configurar las rutas de manejo
+	http.HandleFunc("/", home)
+	http.HandleFunc("/start_game", startGame)
+	http.HandleFunc("/show_game", showGame)
 
-    // Configurar las rutas de manejo
-    http.HandleFunc("/", home)
-    http.HandleFunc("/start_game", startGame)
-    http.HandleFunc("/show_game", showGame)
-
-
-    fmt.Println("Server listening on :8080")
-    http.ListenAndServe(":8080", nil)
+	fmt.Println("Server listening on :8080")
+	http.ListenAndServe(":8080", nil)
 }
 
 ```
@@ -257,18 +247,28 @@ func main() {
 Se definen dos estructuras: "Ficha" y "Lanzamiento". La estructura "Ficha" representa las fichas de los jugadores, y "Lanzamiento" representa los resultados de lanzar dos dados. Uno de los datos más importantes es “estado” de la estructura “Ficha” que podemos saber si una ficha se va entrar en una casilla donde hay obstáculo (1) o si ya estuvo en zona obstáculo (2). Además, crean la variable para el nodo remoto, un arreglo del objeto fichas y una lista para guardar el mapa.
 
 ```go
+const (
+	NFICHAS = 4
+)
+
+type GameData struct {
+	NumPlayers int
+	GameMap    [40]int
+	NumTurno   int
+}
+
 type Ficha struct {
-    id       int
-    color    string
-    posicion int
-    estado   int
-    meta     bool
+	id       int
+	color    string
+	posicion int
+	estado   int
+	meta     bool
 }
 
 type Lanzamiento struct {
-    dadoA   int
-    dadoB   int
-    avanzar bool
+	dadoA   int
+	dadoB   int
+	avanzar bool
 }
 
 var direccionRemota string
@@ -280,40 +280,71 @@ var mapa [40]int
 guardarPosicionesEnArchivo(): Se utiliza para guardar las posiciones de las fichas en un archivo de texto. La función recibe el color del jugador como parámetro.
 
 ```go
-func guardarPosicionesEnArchivo(color string) {
-    ArchivoRegistro := fmt.Sprintf("archivo_%s.txt", color)
-    file, err := os.OpenFile(ArchivoRegistro, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-    if err != nil {
-        fmt.Println("Error al abrir el archivo:", err)
-        return
-    }
-    defer file.Close()
-    for _, f := range fichas {
-        message := fmt.Sprintf("<p>Id: %d - Color: %s - Posición: %d - Meta:%t </p>\n", f.id, f.color, f.posicion, f.meta)
-        _, err := file.WriteString(message)
-        if err != nil {
-            fmt.Println("Error al escribir en el archivo:", err)
-            return
-        }
-    }
-    _, err = file.WriteString("--------------------------------------------------\n")
-    if err != nil {
-        fmt.Println("Error al escribir en el archivo:", err)
-        return
-    }
-}
+func guardarPosicionesEnArchivo(color string, turno int, jugo_jugador int) {
+	ArchivoRegistro := fmt.Sprintf("archivo_%s.txt", color)
+	file, err := os.OpenFile(ArchivoRegistro, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error al abrir el archivo:", err)
+		return
+	}
+	defer file.Close()
 
+	if turno != 0 {
+		messageT := fmt.Sprintf("<p class='registro'> TurnoActual: %d </p>\n", turno)
+		_, err = file.WriteString(messageT)
+		if err != nil {
+			fmt.Println("Error al escribir en el archivo:", err)
+			return
+		}
+	} else {
+		_, err = file.WriteString(intArrayToString())
+		if err != nil {
+			fmt.Println("Error al escribir en el archivo:", err)
+			return
+		}
+	}
+
+	if jugo_jugador == -1 {
+
+	} else if jugo_jugador == 1 {
+		for _, f := range fichas {
+			message := fmt.Sprintf("<p class='registro'> Id: %d - Color: %s - Posición: %d - Meta:%t </p>\n", f.id, f.color, f.posicion, f.meta)
+			_, err := file.WriteString(message)
+			if err != nil {
+				fmt.Println("Error al escribir en el archivo:", err)
+				return
+			}
+		}
+	} else if jugo_jugador == 0 {
+		_, err = file.WriteString("<p class='registro' style='color:black'> ESTE JUGADOR PERDIO SU TURNO </p>\n")
+		if err != nil {
+			fmt.Println("Error al escribir en el archivo:", err)
+			return
+		}
+	} else {
+		_, err = file.WriteString("<p class='registro' style='color:yellow'> FELICITACIONES GANASTE EL JUEGO</p>\n")
+		if err != nil {
+			fmt.Println("Error al escribir en el archivo:", err)
+			return
+		}
+	}
+	_, err = file.WriteString("--------------------------------------------------\n")
+	if err != nil {
+		fmt.Println("Error al escribir en el archivo:", err)
+		return
+	}
+}
 ```
 
 enviar():  Transformación del objeto GameData ha formato json y luego a tipo string, con el objetivo de enviar el objeto hacia el nodo siguiente.
 
 ```go
 func enviar(gameData GameData) {
-    con, _ := net.Dial("tcp", direccionRemota)
-    jsonBytes, _ := json.Marshal(gameData)
-    jsonStr := string(jsonBytes)
-    defer con.Close()
-    fmt.Fprintln(con, jsonStr)
+	con, _ := net.Dial("tcp", direccionRemota)
+	jsonBytes, _ := json.Marshal(gameData)
+	jsonStr := string(jsonBytes)
+	defer con.Close()
+	fmt.Fprintln(con, jsonStr)
 }
 
 ```
@@ -321,18 +352,58 @@ func enviar(gameData GameData) {
 lanzarDados(): Genera un lanzamiento de dados aleatorio y devuelve un objeto de tipo "Lanzamiento".
 ```go
 func lanzarDados() Lanzamiento {
-    valor := rand.Intn(2)
-    tiro := Lanzamiento{
-        dadoA:   rand.Intn(6) + 1,
-        dadoB:   rand.Intn(6) + 1,
-        avanzar: valor == 1,
-    }
-    return tiro
+	valor := rand.Intn(2)
+	tiro := Lanzamiento{
+		dadoA:   rand.Intn(6) + 1,
+		dadoB:   rand.Intn(6) + 1,
+		avanzar: valor == 1,
+	}
+	return tiro
 }
 
 ```
 
-manejador(): 
+manejador():  Almacenamiento del mensaje y transformación en un objeto de tipo GameData. En la primera ronda se inicializarán las fichas de los jugadores, en las rondas siguientes se validarán si el jugador actual ha ganado el juego. En caso de que el jugador aún no haya ganado, jugará su turno y enviará el objeto GameData al nodo siguiente. En caso contrario, se imprimirá un mensaje de victoria del jugador ganador.
+```go
+func manejador(con net.Conn, color string, chFichas []chan bool) {
+	var gameData GameData
+	// time.Sleep(1 * time.Second)
+	defer con.Close()
+	fmt.Printf("Turno del Jugador: %s\n", color)
+	defer con.Close()
+	br := bufio.NewReader(con)
+	msg, _ := br.ReadString('\n')
+	msg = strings.TrimSpace(msg)
+	json.Unmarshal([]byte(msg), &gameData)
+	if gameData.NumPlayers > 0 {
+		fmt.Println("Inicializando Fichas")
+		initialize_player(color)
+		gameData.NumPlayers = gameData.NumPlayers - 1
+		mapa = gameData.GameMap
+		fmt.Println(mapa)
+		fmt.Println("------------------------")
+		guardarPosicionesEnArchivo(color, gameData.NumTurno, -1)
+		enviar(gameData)
+	} else {
+		gameData.NumTurno = gameData.NumTurno + 1
+		fichasCompletadas := 0
+		for _, f := range fichas {
+			if f.meta == true {
+				fichasCompletadas++
+			}
+		}
+		if fichasCompletadas < 4 {
+			jugo_jugador := turno_jugador(chFichas[0], chFichas[1], chFichas[2], chFichas[3])
+			enviar(gameData)
+			guardarPosicionesEnArchivo(color, gameData.NumTurno, jugo_jugador)
+		} else {
+			guardarPosicionesEnArchivo(color, gameData.NumTurno, 2)
+			fmt.Printf("El jugador %s ha ganado el juego\n", color)
+			fmt.Println(fichas)
+		}
+	}
+}
+```
 
 pierdeTurno(): Verifica si un jugador pierde su turno debido a un obstáculo en el tablero.
 

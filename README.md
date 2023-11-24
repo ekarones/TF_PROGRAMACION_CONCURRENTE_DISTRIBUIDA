@@ -621,6 +621,7 @@ Finalmente el juego termina cuando un jugador tiene sus 4 fichas en la última c
 * Código
 https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA
 * Video
+https://www.youtube.com/watch?v=xpcmkFCy1Ds
 
 
 

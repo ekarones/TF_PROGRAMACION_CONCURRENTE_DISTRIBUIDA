@@ -51,6 +51,13 @@ La simulación debe mostrar el progreso del juego en tiempo real, lo que signifi
 
 ## 4. Capítulo III: Implementación de la solución
 
+### Sprint Backlog
+
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/89090023/5a5fd2ad-991c-427f-b404-d8b2a799cb21)
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/89090023/fffba0eb-d6b6-4922-b966-359db7777700)
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/89090023/77324110-fc78-42ae-a44f-1a42718f8d97)
+![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/89090023/65c8c0a8-8d74-424e-961a-0a5c2b1e22d5)
+
 ![image](https://github.com/ekarones/TF_PROGRAMACION_CONCURRENTE_DISTRIBUIDA/assets/66271146/5fced8f4-7a88-4d3d-a36c-b84f7d16748a)
 
 ### a. Archivo main.go
